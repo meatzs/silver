@@ -40,7 +40,7 @@ case class LineColumnPosition(line: Int, column: Int) extends HasLineColumn
 /** Represents a source code position by referencing a file, a line and a column.
   * Optionally, an additional end position can be specified.
   */
-trait AbstractSourcePosition extends HasLineColumn {
+trait AbstractSourcePosition extends HasLineColumn{
   def file: Path
 
   def start: HasLineColumn
