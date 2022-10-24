@@ -227,6 +227,7 @@ trait TransformableErrors {
   def errT: ErrorTrafo
 
   var inlMsg: Option[String] = None
+  var diffInlBarrierType: Option[Int] = None
 
   // Rewriting strategy to transform every node back that has a back transformation specified
   private lazy val nodeTrafoStrat = StrategyBuilder.Slim[Node]({
