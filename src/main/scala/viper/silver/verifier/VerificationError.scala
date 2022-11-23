@@ -173,85 +173,6 @@ trait VerificationError extends AbstractError with ErrorMessage {
 
 }
 
-abstract class DiffInlError extends VerificationError {
-  override def reason: ErrorReason = DummyReason
-  override def id = "DifferentialInlining"
-  override def offendingNode= DummyNode
-  override def pos = offendingNode.pos
-  override def withNode(offendingNode: ErrorNode)= DummyReason
-  val barrierNames: Seq[String] = Seq("SPH", "SPHp", "SPHa", "SPaH", "SPaHp", "SPaHa", "SaPH", "SaPHp", "SaPHa",
-    "SaPaH", "SaPaHp", "SaPaHa")
-  val barrierParentMapping: Map[Int, Set[Int]] = Map(0 -> Set(1,3,6), 1 -> Set(2,4,7), 2 -> Set(5,8), 3 -> Set(4,9),
-    4 -> Set(5,10), 5 -> Set(11), 6 -> Set(7,9), 7 -> Set(8, 10), 8 -> Set(11), 9 -> Set(10), 10 -> Set(11), 11 -> Set())
-
-  /**
-    *
-    * @param failedBarriers set of the barriers that failed to verify. The barrier types are represented as Integer
-    *                       and the name of the barrier can be resolved by using the Integer as Index of the val "barrierNames".
-    * @return Returns the error message for readableMessage() as String. If all barriers verified (i.e. failedBarriers.isEmpty)
-    *         then it generates a success message. Otherwise, it return what barriers failed and which barriers are critical links.
-    */
-  def analyseDiffInlFailures(failedBarriers: Set[Int]): String = {
-    if (failedBarriers.isEmpty) //if all barriers verified then no DiffInlError will be created -> this is actually useless.
-      return "Verification succeeded for all Barriers!"
-
-    var failedBarriersNames: String = ""
-    //assumes that all barriers are verified
-    var successBarriers: Set[Int] = Set(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
-    successBarriers = successBarriers -- failedBarriers
-
-    for (i <- failedBarriers) failedBarriersNames= failedBarriersNames + " | " + barrierNames(i)
-    s"Verification with Differential inlining failed for ${failedBarriers.size} of 12 barriers:\n  " + failedBarriersNames + "\n " +
-    s"Result of Barrier analysis and critical links: \n " +
-      findCritBarriers(failedBarriers, successBarriers).map{case (a,b,c) => s"${barrierNames(a)} succeeded; ${b.foldLeft("")((s, x) =>
-        s + ", " + barrierNames(x))} failed => $c"}.mkString("\n ") + "\n"
-
-  }
-
-  /**
-    *
-    * @param failedBarriers set of the barriers that failed to verify. The barrier types are represented as Integer
-    *                       and the name of the barrier can be resolved by using the Integer as Index of the val "barrierNames".
-    * @return Returns a sequence of tuples, where ._1 is the critical barrier that succeeded, ._2 is the set of the
-    *         parent nodes of ._1 and ._3 is the recommendation on how to strengthen the annotations so that the parent
-    *         barriers also verify.
-    */
-  def findCritBarriers(failedBarriers: Set[Int], successBarriers: Set[Int]) : Seq[(Int,Set[Int], String)] = {
-    var result: Seq[(Int, Set[Int], String)] = Seq()
-    for (b <- successBarriers) {
-      val uni = barrierParentMapping(b) & (failedBarriers)
-      //if barrier has a parent and all parents did not verify
-      if (!barrierParentMapping(b).isEmpty && uni.size==barrierParentMapping(b).size) {
-        result = result :+ (b, barrierParentMapping(b), critBarrierStrengheningImplication(b))
-      }
-    }
-    result
-  }
-
-  //  surrounding context
-  var critBarrierStrengheningImplication: Map[Int, String] = Map(
-    0 -> ("There are enough resources in the super body for verification. Annotations for the store, the permission " ++
-      "mask, and the heap are insufficient."),  //SPH
-    1 -> ("placeHolder"),  //SPHp
-    2 -> ("The annotations for the Heap are sufficient. There are enough resources for the store " ++
-      "and permission mask in the surrounding context. Strengthen annotations for the store and permission mask."),  //SPHa
-    3 -> ("The annotations for the permission mask are sufficient. There are enough resources for the store " ++
-    "and heap in the surrounding context. Strengthen annotations for the store and heap."),  //SPaH
-    4 -> ("placeHolder"),  //SPaHp
-    5 -> ("The annotations for the permission mask and heap are sufficient. There are enough store resources in the " ++
-      "surrounding context. Strenghten annotations for the store."),  //SPaHa
-    6 -> ("The annotations for the store are sufficient. There are enough permission resources in the surrounding context. " ++
-      "Strenghten annotations for the permission mask and heap."),  //SaPH
-    7 -> ("placeHolder"),  //SaPHp
-    8 -> ("The annotations for the store and heap are sufficient. There are enough permission resources in the " ++
-      "surrounding context. Strenghten annotations for the permission mask"),  //SaPHa
-    9 -> ("The annotations for the store and the permission mask are sufficient. There are enough heap resources in the surrounding context. " ++
-      "Strenghten annotations for the heap"),  //SaPaH
-    10 -> ("placeHolder"), //SaPaHp
-    11 -> "Verification is successful for defined annotations."  //SaPaHa -> case not possible to be called. Just here for completness.
-  )
-}
-
 trait FailureContext {
   def counterExample: Option[Counterexample]
   def toString: String
@@ -307,11 +228,11 @@ abstract class AbstractVerificationError extends VerificationError {
 
   def pos = offendingNode.pos
 
-
   def readableMessage(withId: Boolean, withPosition: Boolean) = {
     val idStr = if (withId) s"[$fullId] " else ""
     val posStr = if (withPosition) s" ($pos)" else ""
-    val inline = if (offendingNode.inlMsg.isDefined) s" ${offendingNode.inlMsg}" else ""
+    /** only used if static inlining in carbon verifier is defined. */
+    val inline = if (offendingNode.inlMsg.isDefined) s" ${offendingNode.inlMsg.get}" else ""
     s"$idStr$text ${reason.readableMessage}$posStr $inline"
   }
 

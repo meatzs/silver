@@ -15,6 +15,8 @@ import viper.silver.ast.utility.rewriter.{Rewritable, StrategyBuilder, Traverse}
 import viper.silver.verifier.errors.ErrorNode
 import viper.silver.verifier.{AbstractVerificationError, ConsistencyError, ErrorReason}
 
+import scala.collection.mutable.ListBuffer
+
 /*
 
 This is the Viper abstract syntax description.
@@ -226,8 +228,11 @@ trait TransformableErrors {
   /* Methods for error handling */
   def errT: ErrorTrafo
 
+  /** Is only defined if static inlining in carbon verifier is defined. */
   var inlMsg: Option[String] = None
-  var diffInlBarrierType: Option[Int] = None
+  var callStack: Option[ListBuffer[(Stmt, Boolean)]] = None
+  /** Is only defined if static inlining in carbon verifier is defined. */
+  var diffInlBarrierType: Option[(Int, String)] = None
 
   // Rewriting strategy to transform every node back that has a back transformation specified
   private lazy val nodeTrafoStrat = StrategyBuilder.Slim[Node]({
